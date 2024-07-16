@@ -202,7 +202,7 @@ void calculatePressurePercentage(){
   }
 
   //Low message send
-  if (0-triggerPointPer > waterLevelPer && waterLevelPer > -50 ){
+  if (0+triggerPointPer > waterLevelPer && waterLevelPer > -50 ){
       if (toggleLow == 0){
         toggleLow  = 1;
         send_msg(msg_mobile_number_1,"Empty Tank");
@@ -210,7 +210,7 @@ void calculatePressurePercentage(){
         send_msg(msg_mobile_number_3,"Empty Tank");
       }      
   }
-  else if(0-(triggerPointPer*2) < waterLevelPer){
+  else if(0+(triggerPointPer*2) < waterLevelPer){
     if (toggleLow != 0){
         toggleLow = 0;
     }
