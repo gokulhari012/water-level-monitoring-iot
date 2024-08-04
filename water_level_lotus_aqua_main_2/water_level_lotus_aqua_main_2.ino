@@ -241,7 +241,7 @@ BLYNK_WRITE(IOT_FULL_TANK_PRESSURE) {
   Serial.println(fullTankPressure);
 }
 BLYNK_WRITE(IOT_SIM_TEST_MODE) {
-  sim_mode = param.asInt(); // Use asInt(), asFloat(), or asStr() based on your data type
+  int sim_mode = param.asInt(); // Use asInt(), asFloat(), or asStr() based on your data type
   if(sim_mode==0){
     sim_test = true;
     storeNumberInEEPROM(13, "true");
