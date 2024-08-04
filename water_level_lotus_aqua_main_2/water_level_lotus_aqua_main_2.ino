@@ -42,10 +42,10 @@ char pass[] = "12345678";
 //new sensor range - 600 analog read
 //Set Water Level pressure in CM
 int emptyTankPressure = 500 ;  //pressure when tank is empty low 510
-int fullTankPressure =  900 ;  //pressure when tank is full high 900
+int fullTankPressure =  970 ;  //pressure when tank is full high 900
 
 //Set trigger value in percentage
-int triggerPointPer =   5 ;  //alarm will start when water level drop below triggerPoint **This is percentage tolarance** 
+int triggerPointPer =   10 ;  //alarm will start when water level drop below triggerPoint **This is percentage tolarance** 
 
 
 String msg_mobile_number_1 = "9944391393"; //Velu
@@ -115,8 +115,8 @@ TinyGsm modem(Serial2);
 
 //***********web server***********
 // Define the static IP address and subnet mask
-IPAddress local_IP(192, 168, 4, 1);  // Static IP address for ESP32
-IPAddress gateway(192, 168, 4, 1);   // Gateway (should be the same as local_IP in AP mode)
+IPAddress local_IP(192, 168, 1, 1);  // Static IP address for ESP32
+IPAddress gateway(192, 168, 1, 1);   // Gateway (should be the same as local_IP in AP mode)
 IPAddress subnet(255, 255, 255, 0);  // Subnet mask
 
 // Create an instance of the web server on port 80
@@ -144,10 +144,15 @@ void setup() {
   digitalWrite(emptyLed, LOW);
   digitalWrite(BuzzerPin, LOW);
 
-
   // Set up the WiFi Access Point with static IP address
   WiFi.softAPConfig(local_IP, gateway, subnet);
   WiFi.softAP(ssid, pass);
+
+  // Print the IP address
+  Serial.print("AP IP address: ");
+  Serial.println(WiFi.softAPIP());
+  
+  delay(2000);
   
   // Restart takes quite some time
   // To skip it, call init() instead of restart()
@@ -163,10 +168,6 @@ void setup() {
 
   // Initialize EEPROM with size of 512 bytes
   EEPROM.begin(512);
-
-  // Print the IP address
-  Serial.print("AP IP address: ");
-  Serial.println(WiFi.softAPIP());
 
   // Set up the web server routes
   server.on("/", handleRoot);
@@ -284,14 +285,16 @@ void calculatePressurePercentage(){
   // Print result to serial monitor
   Serial.print("Average pressure: ");
   Serial.print(pressure);
+
   Serial.print("   ---   waterLevelPer: ");
   Serial.println(waterLevelPer);
   delay(500);
-  pressure = 0;
-  pressure_sensor_reading_count = 0;
 
   Blynk.virtualWrite(IOT_WATER_LEVEL_VARIABLE, waterLevelPer);
   Blynk.virtualWrite(IOT_PRESSURE_SENSOR_VARIABLE, pressure);
+
+  pressure = 0;
+  pressure_sensor_reading_count = 0;
 
   //buzzer and send msg and make call
   if (100-triggerPointPer < waterLevelPer && waterLevelPer < 150 ){
