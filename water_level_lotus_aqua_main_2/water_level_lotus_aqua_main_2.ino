@@ -62,6 +62,8 @@ String call_mobile_number_4 = "9791898999";  //Gopi
 String call_mobile_number_5 = "9790169629";  //
 String call_mobile_number_test = "8220339908";  //
 
+int call_delay = 20000;   //call will ring for 20 sec. start call and end call total timing. so around 15 sec the call will ring
+
 boolean sim_test = true;
 
 unsigned long previousMillis = 0;   // Variable to store the last time the function was run
@@ -143,6 +145,10 @@ void setup() {
   digitalWrite(BuzzerPin, LOW);
 
 
+  // Set up the WiFi Access Point with static IP address
+  WiFi.softAPConfig(local_IP, gateway, subnet);
+  WiFi.softAP(ssid, pass);
+  
   // Restart takes quite some time
   // To skip it, call init() instead of restart()
   Serial.println("Initializing modem...");
@@ -150,16 +156,13 @@ void setup() {
   modem.init();
 
   timer.setInterval(2000L, checkBlynkStatus); // check if Blynk server is connected every 2 seconds
+  
   //Blynk.config(auth);
   Blynk.begin(auth, modem, apn, user, pass_sim);
   delay(1000);
 
   // Initialize EEPROM with size of 512 bytes
   EEPROM.begin(512);
-
-  // Set up the WiFi Access Point with static IP address
-  WiFi.softAPConfig(local_IP, gateway, subnet);
-  WiFi.softAP(ssid, pass);
 
   // Print the IP address
   Serial.print("AP IP address: ");
@@ -257,7 +260,7 @@ void measurePressure(){
   pressure = local_pressure_reading + pressure;
   pressure_sensor_reading_count++;
 
-  Blynk.virtualWrite(IOT_PRESSURE_SENSOR_VARIABLE, local_pressure_reading);
+  //Blynk.virtualWrite(IOT_PRESSURE_SENSOR_VARIABLE, local_pressure_reading);
   
   // Print result to serial monitor
   //Serial.print("pressure: ");
@@ -288,6 +291,7 @@ void calculatePressurePercentage(){
   pressure_sensor_reading_count = 0;
 
   Blynk.virtualWrite(IOT_WATER_LEVEL_VARIABLE, waterLevelPer);
+  Blynk.virtualWrite(IOT_PRESSURE_SENSOR_VARIABLE, pressure);
 
   //buzzer and send msg and make call
   if (100-triggerPointPer < waterLevelPer && waterLevelPer < 150 ){
@@ -441,7 +445,7 @@ void make_call(String number){
   Serial2.println("ATD+91"+number+";"); // Replace with the recipient's phone number
   update();
   // Optionally wait for some time and then hang up
-  delay(15000); // Wait for 15 seconds (or any desired duration)
+  delay(call_delay); // Wait for 15 seconds (or any desired duration)
   Serial.println("Hanging up...");
   Serial2.println("ATH"); // Hang up the call
   update();
