@@ -37,9 +37,12 @@
 char ssid[] = "LotusAquaIOT";
 char pass[] = "12345678";
 
+//first 1.6mpa sensore used. now changed to 0.2 mpa sensor
+//old sensor range - 60 analog read
+//new sensor range - 600 analog read
 //Set Water Level pressure in CM
-int emptyTankPressure = 430 ;  //pressure when tank is empty low 425
-int fullTankPressure =  475 ;  //pressure when tank is full high 480
+int emptyTankPressure = 500 ;  //pressure when tank is empty low 510
+int fullTankPressure =  900 ;  //pressure when tank is full high 900
 
 //Set trigger value in percentage
 int triggerPointPer =   5 ;  //alarm will start when water level drop below triggerPoint **This is percentage tolarance** 
@@ -95,7 +98,8 @@ BlynkTimer timer;
 #define IOT_SIM_SIGNAL_VARIABLE    V2 
 #define IOT_PRESSURE_SENSOR_VARIABLE    V3 
 
-#define IOT_EMPTY_TANK_PRESSURE    V4
+// #define IOT_EMPTY_TANK_PRESSURE    V4
+#define IOT_SIM_TEST_MODE    V4
 #define IOT_FULL_TANK_PRESSURE    V5 
 
 //***********gsm Module***********
@@ -223,15 +227,28 @@ BLYNK_CONNECTED() {
 }
 
 // Function to be called when data is received from Blynk
-BLYNK_WRITE(IOT_EMPTY_TANK_PRESSURE) {
-  emptyTankPressure = param.asInt(); // Use asInt(), asFloat(), or asStr() based on your data type
-  Serial.print("Received data from Blynk emptyTankPressure: ");
-  Serial.println(emptyTankPressure);
-}
+// BLYNK_WRITE(IOT_EMPTY_TANK_PRESSURE) {
+//   emptyTankPressure = param.asInt(); // Use asInt(), asFloat(), or asStr() based on your data type
+//   Serial.print("Received data from Blynk emptyTankPressure: ");
+//   Serial.println(emptyTankPressure);
+// }
 BLYNK_WRITE(IOT_FULL_TANK_PRESSURE) {
   fullTankPressure = param.asInt(); // Use asInt(), asFloat(), or asStr() based on your data type
   Serial.print("Received data from Blynk fullTankPressure: ");
   Serial.println(fullTankPressure);
+}
+BLYNK_WRITE(IOT_SIM_TEST_MODE) {
+  sim_mode = param.asInt(); // Use asInt(), asFloat(), or asStr() based on your data type
+  if(sim_mode==0){
+    sim_test = true;
+    storeNumberInEEPROM(13, "true");
+  }
+  else{
+    sim_test = false;
+    storeNumberInEEPROM(13, "false");
+  }
+  Serial.print("Received data from Blynk SIM_MODE: ");
+  Serial.println(sim_mode);
 }
 
 void measurePressure(){
