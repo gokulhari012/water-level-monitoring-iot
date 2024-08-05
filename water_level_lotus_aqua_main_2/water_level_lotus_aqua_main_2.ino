@@ -102,7 +102,8 @@ BlynkTimer timer;
 
 // #define IOT_EMPTY_TANK_PRESSURE    V4
 #define IOT_SIM_TEST_MODE    V4
-#define IOT_FULL_TANK_PRESSURE    V5 
+// #define IOT_FULL_TANK_PRESSURE    V5 
+#define IOT_PRESSURE_RANGE    V5 
 
 //***********gsm Module***********
 // Your GPRS credentials (leave empty if not needed)
@@ -153,7 +154,7 @@ void setup() {
   Serial.println(WiFi.softAPIP());
   
   delay(2000);
-  
+
   // Restart takes quite some time
   // To skip it, call init() instead of restart()
   Serial.println("Initializing modem...");
@@ -225,9 +226,7 @@ void checkBlynkStatus() { // called every 3 seconds by SimpleTimer
 }
 
 BLYNK_CONNECTED() {
-  Blynk.syncVirtual(IOT_WATER_LEVEL_VARIABLE);
-  Blynk.syncVirtual(IOT_SIM_SIGNAL_VARIABLE);
-  Blynk.syncVirtual(IOT_PRESSURE_SENSOR_VARIABLE);
+  Blynk.syncVirtual(IOT_WATER_LEVEL_VARIABLE, IOT_SIM_SIGNAL_VARIABLE, IOT_PRESSURE_SENSOR_VARIABLE, IOT_SIM_TEST_MODE);
 }
 
 // Function to be called when data is received from Blynk
@@ -236,14 +235,14 @@ BLYNK_CONNECTED() {
 //   Serial.print("Received data from Blynk emptyTankPressure: ");
 //   Serial.println(emptyTankPressure);
 // }
-BLYNK_WRITE(IOT_FULL_TANK_PRESSURE) {
-  fullTankPressure = param.asInt(); // Use asInt(), asFloat(), or asStr() based on your data type
-  Serial.print("Received data from Blynk fullTankPressure: ");
-  Serial.println(fullTankPressure);
-}
+// BLYNK_WRITE(IOT_FULL_TANK_PRESSURE) {
+//   fullTankPressure = param.asInt(); // Use asInt(), asFloat(), or asStr() based on your data type
+//   Serial.print("Received data from Blynk fullTankPressure: ");
+//   Serial.println(fullTankPressure);
+// }
 BLYNK_WRITE(IOT_SIM_TEST_MODE) {
   int sim_mode = param.asInt(); // Use asInt(), asFloat(), or asStr() based on your data type
-  if(sim_mode==0){
+  if(sim_mode==1){
     sim_test = true;
     storeNumberInEEPROM(13, "true");
   }
@@ -288,10 +287,13 @@ void calculatePressurePercentage(){
 
   Serial.print("   ---   waterLevelPer: ");
   Serial.println(waterLevelPer);
-  delay(500);
+  //delay(500);
 
   Blynk.virtualWrite(IOT_WATER_LEVEL_VARIABLE, waterLevelPer);
+  delay(1000);
   Blynk.virtualWrite(IOT_PRESSURE_SENSOR_VARIABLE, pressure);
+  delay(1000);
+  Blynk.virtualWrite(IOT_PRESSURE_RANGE, "Low: "+String(emptyTankPressure)+" | High: "+String(fullTankPressure)+" | trigger: "+String(triggerPointPer));
 
   pressure = 0;
   pressure_sensor_reading_count = 0;
@@ -304,7 +306,6 @@ void calculatePressurePercentage(){
         if(sim_test){
           send_msg(msg_mobile_number_test,"TanK Full - water level percentage: "+String(waterLevelPer));
           delay(1000);
-          make_call(call_mobile_number_test);
           make_call(call_mobile_number_test);
         }
         else{
@@ -432,6 +433,7 @@ void send_msg(String number, String msg){
   update();
   // End message with CTRL+Z
   Serial2.write(26); 
+  delay(5000);
   update();
 }
 
@@ -530,9 +532,11 @@ void handleSubmit() {
       if (server.hasArg("toggleBox")) {
         sim_test=true;
         storeNumberInEEPROM(13, "true");
+        Blynk.virtualWrite(IOT_SIM_TEST_MODE, 1);
       } else {
         sim_test=false;
         storeNumberInEEPROM(13, "false");
+        Blynk.virtualWrite(IOT_SIM_TEST_MODE, 0);
       }
 
       server.send(200, "text/html", "<br><br><h2>Settings saved. <br> <a style='margin-left:10px' href='/setting'>Go back</a> <br> <a style='margin-left:10px' href='/'>Go Home</a></h2>"+returnCss());
