@@ -78,6 +78,11 @@ const long interval = 10000;        // Interval in milliseconds (10 seconds)blyn
 #include <TinyGsmClient.h>
 #include <BlynkSimpleTinyGSM.h>
 
+//OTA 
+#include <ESPmDNS.h>
+#include <NetworkUdp.h>
+#include <ArduinoOTA.h>
+
 // Define connections to sensor
 #define blynkCloudConnectLed 2   //D2 build in led blue color
 #define BuzzerPin  32  //P32
@@ -158,14 +163,17 @@ void setup() {
   // Restart takes quite some time
   // To skip it, call init() instead of restart()
   Serial.println("Initializing modem...");
-  //modem.restart();
-  modem.init();
+  modem.restart();
+  //modem.init();
 
   timer.setInterval(2000L, checkBlynkStatus); // check if Blynk server is connected every 2 seconds
   
   //Blynk.config(auth);
   Blynk.begin(auth, modem, apn, user, pass_sim);
   delay(1000);
+
+  // Setup a function to check the GSM connection every 3*60 3 mins
+  timer.setInterval(180000L, checkGSMConnection);
 
   // Initialize EEPROM with size of 512 bytes
   EEPROM.begin(512);
@@ -177,6 +185,55 @@ void setup() {
   server.begin();
 
   readEEPROMandSetToVariables();
+
+  // Port defaults to 3232
+  // ArduinoOTA.setPort(3232);
+
+  // Hostname defaults to esp3232-[MAC]
+  // ArduinoOTA.setHostname("myesp32");
+
+  // No authentication by default
+  // ArduinoOTA.setPassword("admin");
+
+  // Password can be set with it's md5 value as well
+  // MD5(admin) = 21232f297a57a5a743894a0e4a801fc3
+  // ArduinoOTA.setPasswordHash("21232f297a57a5a743894a0e4a801fc3");
+
+  //OTA
+  ArduinoOTA
+    .onStart([]() {
+      String type;
+      if (ArduinoOTA.getCommand() == U_FLASH) {
+        type = "sketch";
+      } else {  // U_SPIFFS
+        type = "filesystem";
+      }
+
+      // NOTE: if updating SPIFFS this would be the place to unmount SPIFFS using SPIFFS.end()
+      Serial.println("Start updating " + type);
+    })
+    .onEnd([]() {
+      Serial.println("\nEnd");
+    })
+    .onProgress([](unsigned int progress, unsigned int total) {
+      Serial.printf("Progress: %u%%\r", (progress / (total / 100)));
+    })
+    .onError([](ota_error_t error) {
+      Serial.printf("Error[%u]: ", error);
+      if (error == OTA_AUTH_ERROR) {
+        Serial.println("Auth Failed");
+      } else if (error == OTA_BEGIN_ERROR) {
+        Serial.println("Begin Failed");
+      } else if (error == OTA_CONNECT_ERROR) {
+        Serial.println("Connect Failed");
+      } else if (error == OTA_RECEIVE_ERROR) {
+        Serial.println("Receive Failed");
+      } else if (error == OTA_END_ERROR) {
+        Serial.println("End Failed");
+      }
+    });
+
+  ArduinoOTA.begin();
 }
  void loop() {
  
@@ -185,6 +242,8 @@ void setup() {
   Blynk.run();
   timer.run(); // Initiates SimpleTimer
   server.handleClient();
+  ArduinoOTA.handle();
+
   unsigned long currentMillis = millis();
   if (currentMillis - previousMillis >= interval) {
     // Save the last time the function was run
@@ -193,6 +252,7 @@ void setup() {
     check_signal();
     calculatePressurePercentage();
     off_buzzer();
+    readSMS();
   }
 
 }
@@ -224,6 +284,90 @@ void checkBlynkStatus() { // called every 3 seconds by SimpleTimer
     //Serial.println("Blynk Connected");
   }
 }
+
+// Function to check the GSM connection and reconnect if needed
+void checkGSMConnection() {
+  if (!modem.isGprsConnected()) {
+    Serial.println("GSM not connected. Reconnecting...");
+    modem.gprsDisconnect();
+    if (modem.gprsConnect(apn, user, pass_sim)) {
+      Serial.println("GSM reconnected successfully.");
+      Blynk.connect();
+    } else {
+      Serial.println("GSM reconnection failed.");
+    } 
+  } else {
+    Serial.println("GSM connection is stable.");
+  }
+}
+
+String sendATcommand(const char* command, const char* expected_response, unsigned long timeout) {
+  Serial2.println(command);
+  unsigned long start = millis();
+  String response = "";
+  while (millis() - start < timeout) {
+    while (Serial2.available()) {
+      char c = Serial2.read();
+      response += c;
+      if (response.indexOf(expected_response) != -1) {
+        return response;
+      }
+    }
+  }
+  return response;
+}
+
+void readSMS() {
+  String response;
+  response = sendATcommand("AT+CMGF=1", "OK", 1000); // Set SMS mode to text
+  response = sendATcommand("AT+CMGL=\"REC UNREAD\"", "OK", 5000); // List unread messages
+
+  if (response.indexOf("+CMGL:") != -1) {
+    Serial.println("SMS received:");
+    Serial.println(response);
+
+    // Parse the response to get the SMS content
+    int msgIndex = response.indexOf("+CMGL: ");
+    if (msgIndex != -1) {
+      int msgStart = response.indexOf('\n', msgIndex) + 1;
+      int msgEnd = response.indexOf('\n', msgStart);
+      String message = response.substring(msgStart, msgEnd);
+      
+      Serial.print("Message: ");
+      Serial.println(message);
+
+      // Check if the message contains "restart"
+      if (message.indexOf("restart_esp") != -1) {
+        Serial.println("Restart command received. Restarting...");
+        delay(1000); // Optional delay before restart
+        ESP.restart();
+      }
+      if (message.indexOf("test_mode_on") != -1) {
+        Serial.println("Test Mode on");
+        sim_test = true;
+        storeNumberInEEPROM(13, "true");
+        Blynk.virtualWrite(IOT_SIM_TEST_MODE, 1);
+      }
+      if (message.indexOf("test_mode_off") != -1) {
+        Serial.println("Test Mode off");
+        sim_test = false;
+        storeNumberInEEPROM(13, "false");
+        Blynk.virtualWrite(IOT_SIM_TEST_MODE, 0);
+      }
+    }
+
+    // Optionally, delete the SMS after reading
+    int indexStart = response.indexOf(" ", msgIndex) + 1;
+    int indexEnd = response.indexOf(",", indexStart);
+    String index = response.substring(indexStart, indexEnd);
+    sendATcommand(("AT+CMGD=" + index).c_str(), "OK", 1000);
+  } else {
+    Serial.println("No new SMS.");
+  }
+}
+
+
+
 
 BLYNK_CONNECTED() {
   Blynk.syncVirtual(IOT_WATER_LEVEL_VARIABLE, IOT_SIM_SIGNAL_VARIABLE, IOT_PRESSURE_SENSOR_VARIABLE, IOT_SIM_TEST_MODE);
@@ -344,7 +488,7 @@ void calculatePressurePercentage(){
         
       }     
   }
-  else if(100-(triggerPointPer*2) > waterLevelPer){
+  else if(100-(triggerPointPer*3) > waterLevelPer){
     if (toggleBuzzer != 0){
         toggleBuzzer = 0;
         digitalWrite(BuzzerPin, LOW);
@@ -355,7 +499,7 @@ void calculatePressurePercentage(){
   if (0-triggerPointPer > waterLevelPer && waterLevelPer > -50 ){
       if (toggleLow == 0){
         toggleLow  = 1;
-        if(sim_test){
+        if(sim_test){ 
           send_msg(msg_mobile_number_test,"Empty Tank  - water level percentage: "+String(waterLevelPer));
         }
         else{
@@ -378,7 +522,7 @@ void calculatePressurePercentage(){
 
       }      
   }
-  else if(0-(triggerPointPer*2) < waterLevelPer){
+  else if(0-(triggerPointPer*3) < waterLevelPer){
     if (toggleLow != 0){
         toggleLow = 0;
     }
