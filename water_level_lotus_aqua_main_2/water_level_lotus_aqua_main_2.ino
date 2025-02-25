@@ -53,6 +53,8 @@ String msg_mobile_number_2 = "9597307257"; //
 String msg_mobile_number_3 = "9962601292"; //sampath 
 String msg_mobile_number_4 = "9791898999"; //Gopi
 String msg_mobile_number_5 = "9790169629"; //
+String msg_mobile_number_6 = "9790169629"; //
+String msg_mobile_number_7 = "9790169629"; //
 String msg_mobile_number_test = "8220339908"; //
 
 String call_mobile_number_1 = "9944391393";  //Velu
@@ -60,6 +62,8 @@ String call_mobile_number_2 = "9597307257";  //
 String call_mobile_number_3 = "9962601292";  //sampath 
 String call_mobile_number_4 = "9791898999";  //Gopi
 String call_mobile_number_5 = "9790169629";  //
+String call_mobile_number_6 = "9790169629";  //
+String call_mobile_number_7 = "9790169629";  //
 String call_mobile_number_test = "8220339908";  //
 
 int call_delay = 20000;   //call will ring for 20 sec. start call and end call total timing. so around 15 sec the call will ring
@@ -345,13 +349,13 @@ void readSMS() {
       if (message.indexOf("test_mode_on") != -1) {
         Serial.println("Test Mode on");
         sim_test = true;
-        storeNumberInEEPROM(13, "true");
+        storeNumberInEEPROM(17, "true");
         Blynk.virtualWrite(IOT_SIM_TEST_MODE, 1);
       }
       if (message.indexOf("test_mode_off") != -1) {
         Serial.println("Test Mode off");
         sim_test = false;
-        storeNumberInEEPROM(13, "false");
+        storeNumberInEEPROM(17, "false");
         Blynk.virtualWrite(IOT_SIM_TEST_MODE, 0);
       }
     }
@@ -388,11 +392,11 @@ BLYNK_WRITE(IOT_SIM_TEST_MODE) {
   int sim_mode = param.asInt(); // Use asInt(), asFloat(), or asStr() based on your data type
   if(sim_mode==1){
     sim_test = true;
-    storeNumberInEEPROM(13, "true");
+    storeNumberInEEPROM(17, "true");
   }
   else{
     sim_test = false;
-    storeNumberInEEPROM(13, "false");
+    storeNumberInEEPROM(17, "false");
   }
   Serial.print("Received data from Blynk SIM_MODE: ");
   Serial.println(sim_mode);
@@ -468,6 +472,12 @@ void calculatePressurePercentage(){
           if(msg_mobile_number_5!=""){
             send_msg(msg_mobile_number_5,"TanK Full - water level percentage: "+String(waterLevelPer));   
           }
+          if(msg_mobile_number_6!=""){
+            send_msg(msg_mobile_number_6,"TanK Full - water level percentage: "+String(waterLevelPer));   
+          }
+          if(msg_mobile_number_7!=""){
+            send_msg(msg_mobile_number_7,"TanK Full - water level percentage: "+String(waterLevelPer));   
+          }
           delay(2000);
           if(call_mobile_number_1!=""){
             make_call(call_mobile_number_1);
@@ -483,6 +493,12 @@ void calculatePressurePercentage(){
           }
           if(call_mobile_number_5!=""){
             make_call(call_mobile_number_5);
+          }
+          if(call_mobile_number_6!=""){
+            make_call(call_mobile_number_6);
+          }
+          if(call_mobile_number_7!=""){
+            make_call(call_mobile_number_7);
           }
         }
         
@@ -517,6 +533,12 @@ void calculatePressurePercentage(){
           }
           if(msg_mobile_number_5!=""){
             send_msg(msg_mobile_number_5,"Empty Tank  - water level percentage: "+String(waterLevelPer));
+          }
+          if(msg_mobile_number_6!=""){
+            send_msg(msg_mobile_number_6,"Empty Tank  - water level percentage: "+String(waterLevelPer));
+          }
+          if(msg_mobile_number_7!=""){
+            send_msg(msg_mobile_number_7,"Empty Tank  - water level percentage: "+String(waterLevelPer));
           }
         }
 
@@ -639,14 +661,14 @@ void check_signal(){
 void handleRoot() {
   String html = "<html><body><h1>Lotus Aqua - water Level indicator IOT</h1><h2>Enter Mobile Numbers</h2><h3>For Message</h3>";
   html += "<form action='/submit' method='post'>";
-  for (int i = 0; i < 5; i++) {
+  for (int i = 0; i < 7; i++) {
     String number = readNumberFromEEPROM(i);
     html += "Mobile Number " + String(i + 1) + ": <input type='number' name='number" + String(i) + "'"+"value='"+number+"'><br>";
   }
   html+="<h3>For Call</h3>";
-  for (int i = 5; i < 10; i++) {
+  for (int i = 7; i < 14; i++) {
     String number = readNumberFromEEPROM(i);
-    html += "Mobile Number " + String(i + 1 - 5) + ": <input type='number' name='number" + String(i) + "'"+"value='"+number+"'><br>";
+    html += "Mobile Number " + String(i + 1 - 7) + ": <input type='number' name='number" + String(i) + "'"+"value='"+number+"'><br>";
   }
   html += "<br><h2><input type='submit' name='submit' value='Submit'></form></h2>";
   html+="<a href='/setting'><button>Setting</button></a>";
@@ -658,7 +680,7 @@ void handleRoot() {
 // Function to handle form submission
 void handleSubmit() {
   if(server.arg("submit")=="Submit"){
-    for (int i = 0; i < 10; i++) {
+    for (int i = 0; i < 14; i++) {
       String number = server.arg("number" + String(i));
       storeNumberInEEPROM(i, number);
     }
@@ -669,17 +691,17 @@ void handleSubmit() {
       String highLevelReading = server.arg("highLevelReading");
       String triggerPointPercentage = server.arg("triggerPointPercentage");
 
-      storeNumberInEEPROM(10, lowLevelReading);
-      storeNumberInEEPROM(11, highLevelReading);
-      storeNumberInEEPROM(12, triggerPointPercentage);
+      storeNumberInEEPROM(14, lowLevelReading);
+      storeNumberInEEPROM(15, highLevelReading);
+      storeNumberInEEPROM(16, triggerPointPercentage);
 
       if (server.hasArg("toggleBox")) {
         sim_test=true;
-        storeNumberInEEPROM(13, "true");
+        storeNumberInEEPROM(17, "true");
         Blynk.virtualWrite(IOT_SIM_TEST_MODE, 1);
       } else {
         sim_test=false;
-        storeNumberInEEPROM(13, "false");
+        storeNumberInEEPROM(17, "false");
         Blynk.virtualWrite(IOT_SIM_TEST_MODE, 0);
       }
 
@@ -690,10 +712,10 @@ void handleSubmit() {
 void handleSetting(){
   String html = "<html><body><h1>Lotus Aqua - water Level indicator IOT</h1><h2>Setting</h2>";
   html += "<form action='/submit' method='post'>";
-  String lowLevelReading = readNumberFromEEPROM(10);
-  String highLevelReading = readNumberFromEEPROM(11);
-  String triggerPointPercentage = readNumberFromEEPROM(12);
-  String sim_test_temp = readNumberFromEEPROM(13);
+  String lowLevelReading = readNumberFromEEPROM(14);
+  String highLevelReading = readNumberFromEEPROM(15);
+  String triggerPointPercentage = readNumberFromEEPROM(16);
+  String sim_test_temp = readNumberFromEEPROM(17);
   html += "Low Level Reading : <input type='number' name='lowLevelReading' value='"+lowLevelReading+"'><br>";
   html += "High Level Reading : <input type='number' name='highLevelReading' value='"+highLevelReading+"'><br>";
   html += "Trigger Point Percentage : <input type='number' name='triggerPointPercentage' value='"+triggerPointPercentage+"'><br>";
@@ -751,17 +773,21 @@ void readEEPROMandSetToVariables(){
   msg_mobile_number_3 = readNumberFromEEPROM(2); //sampath 
   msg_mobile_number_4 = readNumberFromEEPROM(3); //Gopi
   msg_mobile_number_5 = readNumberFromEEPROM(4); //
+  msg_mobile_number_6 = readNumberFromEEPROM(5); //
+  msg_mobile_number_7 = readNumberFromEEPROM(6); //
 
-  call_mobile_number_1 = readNumberFromEEPROM(5);  //Velu
-  call_mobile_number_2 = readNumberFromEEPROM(6);  //
-  call_mobile_number_3 = readNumberFromEEPROM(7);  //sampath 
-  call_mobile_number_4 = readNumberFromEEPROM(8);  //Gopi
-  call_mobile_number_5 = readNumberFromEEPROM(9);  //
+  call_mobile_number_1 = readNumberFromEEPROM(7);  //Velu
+  call_mobile_number_2 = readNumberFromEEPROM(8);  //
+  call_mobile_number_3 = readNumberFromEEPROM(9);  //sampath 
+  call_mobile_number_4 = readNumberFromEEPROM(10);  //Gopi
+  call_mobile_number_5 = readNumberFromEEPROM(11);  //
+  call_mobile_number_6 = readNumberFromEEPROM(12);  //
+  call_mobile_number_7 = readNumberFromEEPROM(13);  //
 
-  emptyTankPressure = readNumberFromEEPROM(10).toInt();  
-  fullTankPressure =  readNumberFromEEPROM(11).toInt();  
-  triggerPointPer =   readNumberFromEEPROM(12).toInt(); 
-  if(readNumberFromEEPROM(13)=="true"){
+  emptyTankPressure = readNumberFromEEPROM(14).toInt();  
+  fullTankPressure =  readNumberFromEEPROM(15).toInt();  
+  triggerPointPer =   readNumberFromEEPROM(16).toInt(); 
+  if(readNumberFromEEPROM(17)=="true"){
     sim_test = true;
   }
   else{
