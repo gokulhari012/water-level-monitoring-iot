@@ -178,6 +178,9 @@ void setup() {
 
   // Setup a function to check the GSM connection every 3*60 3 mins
   timer.setInterval(180000L, checkGSMConnection);
+  
+  // Check time every 60 seconds  
+  timer.setInterval(60000L, checkTimeToRestart);
 
   // Initialize EEPROM with size of 512 bytes
   EEPROM.begin(512);
@@ -305,6 +308,25 @@ void checkGSMConnection() {
   }
 }
 
+void checkTimeToRestart() {
+  // Get time from GSM
+  String timeStr = modem.getGSMDateTime(DATE_FULL);
+  Serial.println("GSM Time: " + timeStr);
+
+  // Extract hours and minutes
+  int hour = timeStr.substring(11, 13).toInt();
+  int minute = timeStr.substring(14, 16).toInt();
+
+  Serial.printf("Parsed Time: %02d:%02d\n", hour, minute);
+
+  // Restart at 3:00 AM
+  if (hour == 3 && minute == 0) {
+      Serial.println("Restarting ESP32...");
+      delay(1000);
+      ESP.restart();
+  }
+}
+
 String sendATcommand(const char* command, const char* expected_response, unsigned long timeout) {
   Serial2.println(command);
   unsigned long start = millis();
@@ -339,10 +361,33 @@ void readSMS() {
       
       Serial.print("Message: ");
       Serial.println(message);
+      
+      //Getting the sender number
+      String senderNumber = "";
+      // Find the start position of the sender's number
+      int startIdx = response.indexOf("\",\"") + 3 + 3;  // Move to first quote after "REC UNREAD"
+      int endIdx = response.indexOf("\",\"", startIdx); // Find the closing quote
+      
+      if (startIdx != -1 && endIdx != -1) {
+          senderNumber = response.substring(startIdx, endIdx);
+          Serial.print("Sender's Number: ");
+          Serial.println(senderNumber);
+      } else {
+          Serial.println("Error extracting sender number.");
+      }
 
+      if (message.indexOf("hello") != -1 || message.indexOf("hi") != -1) {
+        Serial.println("hello or hi command received. Restarting...");
+        if (senderNumber!=""){
+          send_msg(senderNumber,"Welcome from water level monitoring system");
+        }
+      }
       // Check if the message contains "restart"
       if (message.indexOf("restart_esp") != -1) {
         Serial.println("Restart command received. Restarting...");
+        if (senderNumber!=""){
+          send_msg(senderNumber,"Restarting Esp...");
+        }
         delay(1000); // Optional delay before restart
         ESP.restart();
       }
@@ -351,12 +396,18 @@ void readSMS() {
         sim_test = true;
         storeNumberInEEPROM(17, "true");
         Blynk.virtualWrite(IOT_SIM_TEST_MODE, 1);
+        if (senderNumber!=""){
+          send_msg(senderNumber,"Test Mode on");
+        }
       }
       if (message.indexOf("test_mode_off") != -1) {
         Serial.println("Test Mode off");
         sim_test = false;
         storeNumberInEEPROM(17, "false");
         Blynk.virtualWrite(IOT_SIM_TEST_MODE, 0);
+        if (senderNumber!=""){
+          send_msg(senderNumber,"Test Mode off");
+        }
       }
     }
 
